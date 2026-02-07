@@ -4,6 +4,7 @@ function sendJson(res, statusCode, data) {
   res.statusCode = statusCode;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   res.end(JSON.stringify(data));
 }
 
@@ -22,9 +23,10 @@ module.exports = async (req, res) => {
       data: nextRace
     });
   } catch (error) {
-    sendJson(res, 502, {
-      error: 'Failed to fetch F1 schedule data.',
-      details: error.message
-    });
+    const payload = { error: 'Failed to fetch F1 schedule data.' };
+    if (process.env.NODE_ENV !== 'production') {
+      payload.details = error.message;
+    }
+    sendJson(res, 502, payload);
   }
 };

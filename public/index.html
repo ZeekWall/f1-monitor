@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>F1 Monitor</title>
+    <title>When is the race?</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,21 +17,25 @@
     <div class="bg-shape bg-shape-b" aria-hidden="true"></div>
     <main class="container">
       <header class="header">
-        <h1>F1 Monitor</h1>
-        <p class="subtitle">Next weekend sessions, localized instantly.</p>
-        <p id="timezone" class="timezone">Detecting timezone...</p>
+        <div>
+          <h1>When is the race?</h1>
+          <p class="subtitle">Fast local times for every session in the next F1 weekend.</p>
+          <p id="timezone" class="timezone">Detecting timezone...</p>
+        </div>
+        <div class="controls">
+          <button id="clockToggle" class="toggle-time" type="button" aria-pressed="false">24h Off</button>
+          <button id="refreshButton" class="refresh" type="button">Refresh</button>
+        </div>
       </header>
 
       <section class="card" aria-live="polite">
-        <div id="status" class="status">Loading next race weekend...</div>
+        <div id="status" class="status">Loading race weekend...</div>
         <div id="event" class="event hidden">
           <h2 id="raceName"></h2>
           <p id="location" class="location"></p>
           <ul id="sessions" class="sessions"></ul>
         </div>
       </section>
-
-      <button id="refreshButton" class="refresh" type="button">Refresh Schedule</button>
     </main>
 
     <script src="/app.js" defer></script>

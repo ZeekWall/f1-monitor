@@ -8,7 +8,8 @@ const PORT = Number(process.env.PORT || 3000);
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store'
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff'
   });
   res.end(JSON.stringify(data));
 }
@@ -16,7 +17,10 @@ function sendJson(res, statusCode, data) {
 function sendFile(res, filepath, contentType) {
   try {
     const content = fs.readFileSync(filepath);
-    res.writeHead(200, { 'Content-Type': contentType });
+    res.writeHead(200, {
+      'Content-Type': contentType,
+      'X-Content-Type-Options': 'nosniff'
+    });
     res.end(content);
   } catch (error) {
     sendJson(res, 404, { error: 'Not found' });
@@ -42,10 +46,11 @@ const server = http.createServer(async (req, res) => {
       });
       return;
     } catch (error) {
-      sendJson(res, 502, {
-        error: 'Failed to fetch F1 schedule data.',
-        details: error.message
-      });
+      const payload = { error: 'Failed to fetch F1 schedule data.' };
+      if (process.env.NODE_ENV !== 'production') {
+        payload.details = error.message;
+      }
+      sendJson(res, 502, payload);
       return;
     }
   }
@@ -69,5 +74,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`F1 Monitor running at http://127.0.0.1:${PORT}`);
+  console.log(`When is the race? running at http://127.0.0.1:${PORT}`);
 });

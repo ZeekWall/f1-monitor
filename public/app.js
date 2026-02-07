@@ -2,23 +2,40 @@ function getLocalTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-function formatLocalDateTime(isoUtc, timeZone) {
-  const date = new Date(isoUtc);
-  return new Intl.DateTimeFormat(undefined, {
-    timeZone,
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZoneName: 'short'
-  }).format(date);
+const CLOCK_STORAGE_KEY = 'when-is-race-24h';
+let use24HourClock = false;
+let lastRaceData = null;
+
+function loadClockPreference() {
+  try {
+    return localStorage.getItem(CLOCK_STORAGE_KEY) === '1';
+  } catch (error) {
+    return false;
+  }
+}
+
+function saveClockPreference() {
+  try {
+    localStorage.setItem(CLOCK_STORAGE_KEY, use24HourClock ? '1' : '0');
+  } catch (error) {
+    // Ignore storage errors and keep in-memory preference.
+  }
+}
+
+function updateClockToggleLabel() {
+  const button = document.getElementById('clockToggle');
+  if (!button) {
+    return;
+  }
+  button.textContent = use24HourClock ? '24h On' : '24h Off';
+  button.setAttribute('aria-pressed', String(use24HourClock));
 }
 
 function formatLocalTime(isoUtc, timeZone) {
   const date = new Date(isoUtc);
   return new Intl.DateTimeFormat(undefined, {
     timeZone,
+    hour12: !use24HourClock,
     hour: 'numeric',
     minute: '2-digit',
     timeZoneName: 'short'
@@ -68,7 +85,24 @@ function classifySessions(sessions) {
   });
 }
 
+function getSessionTypeClass(session) {
+  if (session.key === 'Race') {
+    return 'session-type-race';
+  }
+  if (session.key === 'Qualifying') {
+    return 'session-type-qualifying';
+  }
+  if (session.key.startsWith('Sprint')) {
+    return 'session-type-sprint';
+  }
+  if (session.key.includes('Practice')) {
+    return 'session-type-practice';
+  }
+  return 'session-type-other';
+}
+
 function render(nextRace) {
+  lastRaceData = nextRace;
   const timezoneEl = document.getElementById('timezone');
   const statusEl = document.getElementById('status');
   const eventEl = document.getElementById('event');
@@ -76,6 +110,7 @@ function render(nextRace) {
   const locationEl = document.getElementById('location');
   const sessionsEl = document.getElementById('sessions');
 
+  updateClockToggleLabel();
   const timezone = getLocalTimezone();
   timezoneEl.textContent = `Local timezone: ${timezone}`;
 
@@ -85,13 +120,13 @@ function render(nextRace) {
     return;
   }
 
-  statusEl.textContent = 'Showing next race weekend sessions in your local time.';
+  statusEl.textContent = 'Next race weekend sessions in your local time.';
   eventEl.classList.remove('hidden');
 
   raceNameEl.textContent = nextRace.raceName;
   locationEl.textContent = [nextRace.circuitName, nextRace.locality, nextRace.country]
     .filter(Boolean)
-    .join(' - ');
+    .join(' • ');
 
   sessionsEl.innerHTML = '';
   const grouped = new Map();
@@ -109,6 +144,9 @@ function render(nextRace) {
   for (const group of grouped.values()) {
     const dayGroup = document.createElement('li');
     dayGroup.className = 'day-group';
+    if (group.sessions.length === 1 && group.sessions[0].key === 'Race') {
+      dayGroup.classList.add('race-only-day');
+    }
 
     const heading = document.createElement('h3');
     heading.className = 'day-heading';
@@ -119,7 +157,7 @@ function render(nextRace) {
 
     for (const session of group.sessions) {
       const row = document.createElement('div');
-      row.className = 'session-row';
+      row.className = `session-row ${getSessionTypeClass(session)}`;
 
       const meta = document.createElement('div');
       meta.className = 'session-meta';
@@ -148,7 +186,7 @@ function render(nextRace) {
 
 async function loadData(forceRefresh = false) {
   const statusEl = document.getElementById('status');
-  statusEl.textContent = 'Loading next race weekend...';
+  statusEl.textContent = 'Loading race weekend...';
 
   try {
     const suffix = forceRefresh ? '?refresh=1' : '';
@@ -174,4 +212,15 @@ document.getElementById('refreshButton').addEventListener('click', () => {
   loadData(true);
 });
 
+document.getElementById('clockToggle').addEventListener('click', () => {
+  use24HourClock = !use24HourClock;
+  saveClockPreference();
+  updateClockToggleLabel();
+  if (lastRaceData) {
+    render(lastRaceData);
+  }
+});
+
+use24HourClock = loadClockPreference();
+updateClockToggleLabel();
 loadData();
