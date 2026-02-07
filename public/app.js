@@ -153,6 +153,10 @@ async function loadData(forceRefresh = false) {
   try {
     const suffix = forceRefresh ? '?refresh=1' : '';
     const response = await fetch(`/api/next-race${suffix}`);
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error('API returned non-JSON response. Check that /api/next-race is deployed.');
+    }
     const payload = await response.json();
 
     if (!response.ok) {

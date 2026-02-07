@@ -1,16 +1,9 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { pickNextRaceWeekend } = require('./lib/race-utils');
+const { fetchNextRaceData } = require('./lib/schedule-service');
 
 const PORT = Number(process.env.PORT || 3000);
-const API_URL = 'https://api.jolpi.ca/ergast/f1/current.json';
-const CACHE_TTL_MS = 15 * 60 * 1000;
-
-const cache = {
-  value: null,
-  expiresAt: 0
-};
 
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
@@ -30,62 +23,13 @@ function sendFile(res, filepath, contentType) {
   }
 }
 
-function normalizeResponse(selection) {
-  if (!selection) {
-    return null;
-  }
-
-  const { race, sessions } = selection;
-
-  return {
-    season: race.season,
-    round: race.round,
-    raceName: race.raceName,
-    circuitName: race.Circuit?.circuitName || null,
-    locality: race.Circuit?.Location?.locality || null,
-    country: race.Circuit?.Location?.country || null,
-    sessions
-  };
-}
-
-async function fetchNextRaceData(forceRefresh = false) {
-  const nowMs = Date.now();
-  if (!forceRefresh && cache.value && nowMs < cache.expiresAt) {
-    return cache.value;
-  }
-
-  const response = await fetch(API_URL, {
-    headers: {
-      'User-Agent': 'f1-monitor/1.0'
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Schedule request failed with status ${response.status}`);
-  }
-
-  const payload = await response.json();
-  const races = payload?.MRData?.RaceTable?.Races;
-
-  if (!Array.isArray(races)) {
-    throw new Error('Unexpected schedule response shape');
-  }
-
-  const next = normalizeResponse(pickNextRaceWeekend(races));
-
-  cache.value = next;
-  cache.expiresAt = nowMs + CACHE_TTL_MS;
-
-  return next;
-}
-
 const server = http.createServer(async (req, res) => {
-  const requestUrl = new URL(req.url, `http://${req.headers.host}`);
+  const requestUrl = new URL(req.url, 'http://localhost');
 
   if (requestUrl.pathname === '/api/next-race') {
     try {
       const forceRefresh = requestUrl.searchParams.get('refresh') === '1';
-      const nextRace = await fetchNextRaceData(forceRefresh);
+      const nextRace = await fetchNextRaceData({ forceRefresh });
 
       if (!nextRace) {
         sendJson(res, 404, { error: 'No upcoming race weekend found for current season.' });
