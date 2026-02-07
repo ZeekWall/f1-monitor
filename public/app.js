@@ -120,7 +120,7 @@ function render(nextRace) {
     return;
   }
 
-  statusEl.textContent = 'Next race weekend sessions in your local time.';
+  statusEl.textContent = '';
   eventEl.classList.remove('hidden');
 
   raceNameEl.textContent = nextRace.raceName;
